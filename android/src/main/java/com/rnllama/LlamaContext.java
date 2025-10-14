@@ -547,9 +547,9 @@ public class LlamaContext {
 
     if (LlamaContext.isArm64V8a()) {
       if (hasDotProd && hasI8mm && hasAdreno) {
-        Log.d(NAME, "Loading librnllama_v8_2_dotprod_i8mm_opencl.so");
-        System.loadLibrary("rnllama_v8_2_dotprod_i8mm_opencl");
-        loadedLibrary = "rnllama_v8_2_dotprod_i8mm_opencl";
+        Log.d(NAME, "Loading librnllama_v8_2_dotprod_i8mm_vulkan.so");
+        System.loadLibrary("rnllama_v8_2_dotprod_i8mm_vulkan");
+        loadedLibrary = "rnllama_v8_2_dotprod_i8mm_vulkan";
       } else if (hasDotProd && hasI8mm) {
         Log.d(NAME, "Loading librnllama_v8_2_dotprod_i8mm.so");
         System.loadLibrary("rnllama_v8_2_dotprod_i8mm");

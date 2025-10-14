@@ -18,6 +18,7 @@ cp ./$LLAMA_DIR/ggml/include/ggml-cpp.h ./cpp/ggml-cpp.h
 cp ./$LLAMA_DIR/ggml/include/ggml-opt.h ./cpp/ggml-opt.h
 cp ./$LLAMA_DIR/ggml/include/ggml-metal.h ./cpp/ggml-metal.h
 cp ./$LLAMA_DIR/ggml/include/ggml-opencl.h ./cpp/ggml-opencl.h
+cp ./$LLAMA_DIR/ggml/include/ggml-vulkan.h ./cpp/ggml-vulkan.h
 cp ./$LLAMA_DIR/ggml/include/gguf.h ./cpp/gguf.h
 
 cp -r ./$LLAMA_DIR/ggml/src/ggml-metal ./cpp/
@@ -26,6 +27,10 @@ rm ./cpp/ggml-metal/ggml-metal.metal
 
 cp -r ./$LLAMA_DIR/ggml/src/ggml-opencl ./cpp/
 rm ./cpp/ggml-opencl/CMakeLists.txt
+
+cp -r ./$LLAMA_DIR/ggml/src/ggml-vulkan ./cpp/
+rm -rf ./cpp/ggml-vulkan/cmake
+rm ./cpp/ggml-vulkan/CMakeLists.txt
 
 cp ./$LLAMA_DIR/ggml/src/ggml-cpu/ggml-cpu.c ./cpp/ggml-cpu/ggml-cpu.c
 cp ./$LLAMA_DIR/ggml/src/ggml-cpu/ggml-cpu.cpp ./cpp/ggml-cpu/ggml-cpu.cpp
@@ -197,8 +202,10 @@ files_add_lm_prefix=(
   "./cpp/ggml-metal/ggml-metal-device.m"
   "./cpp/ggml-metal/ggml-metal-ops.h"
   "./cpp/ggml-metal/ggml-metal-ops.cpp"
-  ."/cpp/ggml-opencl.h"
+  "./cpp/ggml-opencl.h"
   "./cpp/ggml-opencl/ggml-opencl.cpp"
+  ."/cpp/ggml-vulkan.h"
+  "./cpp/ggml-vulkan/ggml-vulkan.cpp"
   "./cpp/ggml-cpu.h"
   "./cpp/ggml-cpu/ggml-cpu-impl.h"
   "./cpp/ggml-cpu/ggml-cpu.c"

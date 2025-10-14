@@ -1057,39 +1057,37 @@ struct common_init_result common_init_from_params(common_params & params) {
     }
 
     if (params.warmup) {
-        LOG_WRN("%s: warming up the model with an empty run - please wait ... (--no-warmup to disable)\n", __func__);
+        LOG_WRN("%s: warmup (1 token, no EOS, no logits, no past) -- (--no-warmup to disable)\n", __func__);
 
-        llama_set_warmup(lctx, true);
+        llama_set_warmup(lctx, true); // backends can check this to skip KV staging
 
-        std::vector<llama_token> tmp;
-        llama_token bos = llama_vocab_bos(vocab);
-        llama_token eos = llama_vocab_eos(vocab);
+        // Pick a single valid token (prefer BOS; fallback to 0)
+        llama_token tok = llama_vocab_bos(vocab);
+        if (tok == LLAMA_TOKEN_NULL) tok = 0;
 
-        // some models (e.g. T5) don't have a BOS token
-        if (bos != LLAMA_TOKEN_NULL) {
-            tmp.push_back(bos);
+        // Build a single-token batch with NO logits readback
+        auto batch = llama_batch_get_one(&tok, 1);
+        // ensure explicit "no logits" on the warmup step:
+        if (batch.logits && batch.n_tokens > 0) {
+            batch.logits[0] = 0;           // do not ask backend to produce/read logits
         }
-        if (eos != LLAMA_TOKEN_NULL) {
-            tmp.push_back(eos);
-        }
-        if (tmp.empty()) {
-            tmp.push_back(0);
-        }
+        // force first position & single sequence
+        if (batch.pos)      batch.pos[0]      = 0;
+        if (batch.n_seq_id) batch.n_seq_id[0] = 1;
+        if (batch.seq_id)   batch.seq_id[0][0]= 0;
 
-        if (llama_model_has_encoder(model)) {
-            llama_encode(lctx, llama_batch_get_one(tmp.data(), tmp.size()));
-            llama_token decoder_start_token_id = llama_model_decoder_start_token(model);
-            if (decoder_start_token_id == LLAMA_TOKEN_NULL) {
-                decoder_start_token_id = bos;
-            }
-            tmp.clear();
-            tmp.push_back(decoder_start_token_id);
-        }
+        // Encoder/decoder branches: run exactly one side with n_past = 0
         if (llama_model_has_decoder(model)) {
-            llama_decode(lctx, llama_batch_get_one(tmp.data(), std::min(tmp.size(), (size_t) params.n_batch)));
+            llama_decode(lctx, batch);
+        } else if (llama_model_has_encoder(model)) {
+            llama_encode(lctx, batch);
         }
-        llama_memory_clear(llama_get_memory(lctx), true);
+
+        // hard sync so no async hazards during debug
         llama_synchronize(lctx);
+
+        // clear arenas & timers like before
+        llama_memory_clear(llama_get_memory(lctx), /*release*/ true);
         llama_perf_context_reset(lctx);
         llama_set_warmup(lctx, false);
     }
@@ -1191,7 +1189,7 @@ struct llama_context_params common_context_params_to_llama(const common_params &
     cparams.flash_attn_type   = params.flash_attn_type;
     cparams.cb_eval           = params.cb_eval;
     cparams.cb_eval_user_data = params.cb_eval_user_data;
-    cparams.offload_kqv       = !params.no_kv_offload;
+    cparams.offload_kqv       = params.no_kv_offload;
     cparams.no_perf           = params.no_perf;
     cparams.op_offload        = !params.no_op_offload;
     cparams.swa_full          = params.swa_full;

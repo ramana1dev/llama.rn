@@ -86,3 +86,7 @@ local-plan
 local-plan-done
 
 tests/*.gguf
+
+#vulkan
+cpp/ggml-vulkan/vk_autogen
+cpp/ggml-vulkan/vulkan-shaders/build-host

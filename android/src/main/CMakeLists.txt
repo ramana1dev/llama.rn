@@ -230,6 +230,47 @@ function(build_library target_name arch cpu_flags)
         )
     endif ()
 
+    if (${target_name} STREQUAL "rnllama_v8_2_dotprod_i8mm_vulkan")
+        set(GGML_VULKAN_DIR ${RNLLAMA_LIB_DIR}/ggml-vulkan)
+        include(${GGML_VULKAN_DIR}/VulkanHeaders.cmake OPTIONAL)
+
+        set(VK_PREGEN_DIR ${GGML_VULKAN_DIR}/vk_autogen)
+        set(VK_PREGEN_CPP ${VK_PREGEN_DIR}/ggml-vulkan-shaders.cpp)
+        set(VK_PREGEN_HPP ${VK_PREGEN_DIR}/ggml-vulkan-shaders.hpp)
+
+        # make sure the SPIR-V embedding files exist
+        if (NOT (EXISTS ${VK_PREGEN_CPP} AND EXISTS ${VK_PREGEN_HPP}))
+            message(FATAL_ERROR "Missing embedded shaders. Run scripts/bootstrap-vulkan.sh")
+        endif()
+
+        # Include directories
+        target_include_directories(${target_name} PRIVATE
+            ${GGML_VULKAN_DIR}
+            ${VK_PREGEN_DIR}
+            ${VULKAN_HEADERS_DIR}
+        )
+
+        # Compile definitions
+        target_compile_definitions(${target_name} PRIVATE
+            -DLM_GGML_USE_VULKAN
+            -DVULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1  # required if using <vulkan/vulkan.hpp> dynamic dispatch
+        )
+
+        # Sources
+        target_sources(${target_name} PRIVATE
+            ${GGML_VULKAN_DIR}/ggml-vulkan.cpp
+            ${VK_PREGEN_CPP}
+        )
+
+        # Link against Vulkan
+        # On Android, link to system Vulkan loader (libvulkan.so)
+        find_library(VULKAN_LIB vulkan)
+        if (NOT VULKAN_LIB)
+            message(FATAL_ERROR "Could not find Vulkan system library")
+        endif()
+
+        target_link_libraries(${target_name} PRIVATE ${VULKAN_LIB})
+    endif()
 
     # NOTE: If you want to debug the native code, you can uncomment if and endif
     # Note that it will be extremely slow
@@ -256,7 +297,8 @@ if (${ANDROID_ABI} STREQUAL "arm64-v8a")
     build_library("rnllama_v8_2_dotprod" "arm" "-march=armv8.2-a+dotprod")
     build_library("rnllama_v8_2_i8mm" "arm" "-march=armv8.2-a+i8mm")
     build_library("rnllama_v8_2_dotprod_i8mm" "arm" "-march=armv8.2-a+dotprod+i8mm")
-    build_library("rnllama_v8_2_dotprod_i8mm_opencl" "arm" "-march=armv8.2-a+dotprod+i8mm")
+    #build_library("rnllama_v8_2_dotprod_i8mm_opencl" "arm" "-march=armv8.2-a+dotprod+i8mm")
+    build_library("rnllama_v8_2_dotprod_i8mm_vulkan" "arm" "-march=armv8.2-a+dotprod+i8mm")
 
     # https://github.com/ggerganov/llama.cpp/blob/master/docs/android.md#cross-compile-using-android-ndk
     # llama.cpp will deal with the cpu features
